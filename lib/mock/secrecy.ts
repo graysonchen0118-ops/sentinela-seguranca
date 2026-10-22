@@ -1,0 +1,86 @@
+import { SecrecyCheck } from "../types";
+
+// Cada caminho por onde uma carta privada poderia viajar, e se está fechado.
+// A ideia: a carta do adversário nunca sai do servidor até o showdown. Dados inventados.
+export const SECRECY: SecrecyCheck[] = [
+  {
+    id: "SG-01",
+    surface: "Estado inicial da mão",
+    path: "WS mesa:estado",
+    status: "risco",
+    detail: "O servidor envia a mão de todos no início e a tela só esconde a dos adversários.",
+    control: "Enviar a cada jogador apenas a própria mão, resto só no showdown.",
+  },
+  {
+    id: "SG-02",
+    surface: "Cartas comunitárias",
+    path: "WS mesa:board",
+    status: "risco",
+    detail: "Flop, turn e river chegam antes da hora e a tela segura a exibição.",
+    control: "Cada carta comunitária sai do servidor só no instante em que vira.",
+  },
+  {
+    id: "SG-03",
+    surface: "Histórico e replay da mão",
+    path: "GET /api/maos/{id}",
+    status: "risco",
+    detail: "O replay mostra a carta de quem desistiu antes do showdown.",
+    control: "Só expor cartas que chegaram ao showdown.",
+  },
+  {
+    id: "SG-04",
+    surface: "Fluxo do espectador",
+    path: "WS espectador",
+    status: "risco",
+    detail: "O espectador recebe o mesmo fluxo do jogador, com cartas privadas.",
+    control: "Canal do espectador carrega só o que é público.",
+  },
+  {
+    id: "SG-05",
+    surface: "Reconexão no meio da mão",
+    path: "WS mesa:resync",
+    status: "risco",
+    detail: "O resync devolve o estado completo, incluindo a mão alheia.",
+    control: "Resync entrega só estado público mais a própria mão.",
+  },
+  {
+    id: "SG-06",
+    surface: "Logs e telemetria",
+    path: "logs de jogo",
+    status: "risco",
+    detail: "A carta privada aparece em texto no log de depuração.",
+    control: "Mascarar na origem e restringir quem lê a telemetria.",
+  },
+  {
+    id: "SG-07",
+    surface: "Cache de resposta",
+    path: "CDN / cache",
+    status: "protegido",
+    detail: "As respostas com estado de mão não são cacheáveis.",
+    control: "Cabeçalho de no-store nas rotas de jogo, já aplicado.",
+  },
+  {
+    id: "SG-08",
+    surface: "Avaliação do vencedor",
+    path: "servidor de jogo",
+    status: "risco",
+    detail: "A mão é avaliada no cliente e o servidor confia no resultado.",
+    control: "O servidor é a única autoridade que decide o pote.",
+  },
+  {
+    id: "SG-09",
+    surface: "Memória do aplicativo",
+    path: "cliente",
+    status: "protegido",
+    detail: "Sem a carta alheia enviada, não há o que ficar na memória do cliente.",
+    control: "Depende de SG-01 fechado, então vale a mesma correção.",
+  },
+  {
+    id: "SG-10",
+    surface: "Notificação e push",
+    path: "serviço de push",
+    status: "corrigido",
+    detail: "A notificação de vez na mesa não carrega mais a mão do jogador.",
+    control: "Push leva só o aviso, o conteúdo fica atrás de login.",
+  },
+];

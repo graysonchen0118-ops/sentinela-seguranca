@@ -1,0 +1,78 @@
+import { FlaggedPlayer } from "../types";
+
+// Contas sinalizadas por suspeita de colusão, multiconta ou automação. Revisão humana
+// antes de qualquer restrição, o sinal é ponto de partida, não veredito. Dados inventados.
+export const PLAYERS: FlaggedPlayer[] = [
+  {
+    id: "JG-01",
+    handle: "trincaBH",
+    motivo: "Colusão",
+    risco: "critica",
+    mesas: 14,
+    sinal: "Senta sempre junto de outra conta e cerca o terceiro.",
+    status: "em_analise",
+  },
+  {
+    id: "JG-02",
+    handle: "riverKing",
+    motivo: "Bot",
+    risco: "alta",
+    mesas: 22,
+    sinal: "Ritmo de ação constante por 11 horas seguidas.",
+    status: "em_analise",
+  },
+  {
+    id: "JG-03",
+    handle: "donaFicha",
+    motivo: "Chip dumping",
+    risco: "alta",
+    mesas: 6,
+    sinal: "Perde de propósito sempre para a mesma conta.",
+    status: "restrito",
+  },
+  {
+    id: "JG-04",
+    handle: "naipe7",
+    motivo: "Multiconta",
+    risco: "media",
+    mesas: 9,
+    sinal: "Duas contas da mesma origem na mesma mesa.",
+    status: "em_analise",
+  },
+  {
+    id: "JG-05",
+    handle: "blefeManso",
+    motivo: "Bot",
+    risco: "media",
+    mesas: 17,
+    sinal: "Tempo de reação quase idêntico em toda jogada.",
+    status: "em_analise",
+  },
+  {
+    id: "JG-06",
+    handle: "parDeases",
+    motivo: "Colusão",
+    risco: "alta",
+    mesas: 8,
+    sinal: "Nunca dá all-in contra uma conta específica.",
+    status: "em_analise",
+  },
+  {
+    id: "JG-07",
+    handle: "foldFacil",
+    motivo: "Multiconta",
+    risco: "baixa",
+    mesas: 4,
+    sinal: "Mesmo aparelho de outra conta, mesas diferentes.",
+    status: "limpo",
+  },
+  {
+    id: "JG-08",
+    handle: "caixaForte",
+    motivo: "Chip dumping",
+    risco: "media",
+    mesas: 5,
+    sinal: "Transferência de fichas repetida para o mesmo par.",
+    status: "restrito",
+  },
+];

@@ -1,407 +1,353 @@
 import { Finding } from "../types";
 
-// Achados de uma auditoria de aplicação web. Dados inventados para ilustrar o painel.
-// Os críticos de Controle de Acesso aparecem primeiro de propósito: é onde quase sempre
-// está o vazamento que ninguém procura.
+// Achados de uma auditoria de integridade de um aplicativo de poker online.
+// Dados inventados. As duas frentes que decidem o jogo vêm primeiro: sigilo da carta
+// (ninguém vê a mão do outro) e aleatoriedade (ninguém prevê a próxima carta).
 export const FINDINGS: Finding[] = [
   {
     id: "SEN-001",
-    title: "Usuário autenticado acessa pedido de outro cliente pelo ID",
-    category: "Controle de Acesso",
+    title: "Servidor envia as cartas de todos os jogadores ao aplicativo",
+    category: "Sigilo de Cartas",
     severity: "critica",
     status: "aberto",
-    area: "GET /api/pedidos/{id}",
+    area: "WS mesa:estado",
     description:
-      "O endpoint de pedidos confia no ID da URL e não confere se o pedido pertence a quem fez a requisição. Qualquer conta logada alcança o pedido de qualquer outra apenas trocando o número.",
+      "No início de cada mão o servidor manda a mão de todos os jogadores para cada aplicativo, e a tela apenas esconde as cartas dos adversários. O dado da carta alheia já chegou no dispositivo.",
     risk:
-      "Dado de compra, endereço e valor de todos os clientes expostos a qualquer conta ativa. É o tipo de falha que vaza a base inteira sem deixar rastro de invasão.",
+      "Um aplicativo modificado lê a carta de todo mundo sem parecer ataque. A mesa roda normal enquanto um jogador vê tudo por baixo.",
     fix:
-      "Checar na camada de serviço se o pedido pertence ao usuário da sessão, não só se a sessão existe. Aplicar a mesma regra a todo endpoint que recebe um ID.",
+      "A carta privada nunca sai do servidor até o showdown. Cada jogador recebe só a própria mão, e a do adversário só é revelada quando a regra manda.",
     reproducao:
-      "Autenticado como cliente A, requisitar o ID de um pedido do cliente B. Passo a passo completo no relatório.",
-    discovered: "2026-10-18",
-    owner: "Backend",
+      "Inspecionar o conteúdo que o servidor envia ao cliente no começo da mão. Detalhes no relatório.",
+    discovered: "2026-10-22",
+    owner: "Servidor de jogo",
   },
   {
     id: "SEN-002",
-    title: "Edição de perfil aceita trocar o papel do usuário",
-    category: "Controle de Acesso",
+    title: "Embaralhamento usa gerador previsível",
+    category: "Aleatoriedade (RNG)",
     severity: "critica",
-    status: "em_correcao",
-    area: "PUT /api/usuarios/{id}",
+    status: "aberto",
+    area: "Serviço de embaralhamento",
     description:
-      "O formulário de perfil envia o campo de papel junto com nome e telefone, e o servidor grava o que chega. Um usuário comum consegue se promover a administrador na própria requisição.",
+      "O baralho é embaralhado com um gerador comum, não criptográfico, semeado por algo adivinhável. Vendo algumas cartas dá para reconstruir o estado e calcular as próximas.",
     risk:
-      "Qualquer cliente vira administrador e passa a ver e mudar tudo. Uma conta comprometida deixa de ser um problema de uma conta.",
+      "Ver três cartas passa a bastar para prever o resto, como adivinhar o baralho inteiro espiando o começo.",
     fix:
-      "Nunca aceitar o papel vindo do cliente. Definir papel só em fluxo de administração, com lista explícita de campos que o próprio usuário pode alterar.",
+      "Embaralhar com gerador criptográfico e adotar baralho justo verificável: o servidor compromete o baralho antes da mão e revela depois, sem dar como prever.",
     reproducao:
-      "Interceptar o salvamento de perfil e incluir o campo de papel. Detalhes no relatório.",
-    discovered: "2026-10-18",
-    owner: "Backend",
+      "Analisar a fonte de aleatoriedade e a semente do embaralhamento.",
+    discovered: "2026-10-22",
+    owner: "Servidor de jogo",
   },
   {
     id: "SEN-003",
-    title: "Sessão não expira após troca de senha",
-    category: "Autenticação",
-    severity: "alta",
-    status: "aberto",
-    area: "POST /api/auth/senha",
+    title: "Histórico da mão mostra carta de quem não foi ao showdown",
+    category: "Sigilo de Cartas",
+    severity: "critica",
+    status: "em_correcao",
+    area: "GET /api/maos/{id}",
     description:
-      "Ao trocar a senha, as sessões antigas continuam válidas. Quem já estava dentro permanece dentro mesmo depois de a vítima trocar a senha.",
+      "O replay da mão traz a carta de jogadores que desistiram antes do showdown, cartas que deveriam permanecer secretas para sempre.",
     risk:
-      "Depois de um vazamento de senha, trocar a senha não expulsa o invasor, que era justamente o objetivo da troca.",
+      "Depois da mão dá para aprender o estilo e o blefe de cada adversário com a carta que ninguém deveria ver.",
     fix:
-      "Invalidar todas as sessões ativas na troca de senha e forçar novo login em todos os dispositivos.",
+      "O histórico só expõe cartas que chegaram ao showdown. O resto nunca é devolvido, nem para o próprio dono fora de contexto.",
     reproducao:
-      "Abrir duas sessões, trocar a senha em uma e seguir navegando na outra.",
-    discovered: "2026-10-17",
-    owner: "Backend",
+      "Abrir o histórico de uma mão em que alguém desistiu no pré-flop.",
+    discovered: "2026-10-21",
+    owner: "Servidor de jogo",
   },
   {
     id: "SEN-004",
-    title: "Recuperação de senha permite enumerar e-mails cadastrados",
-    category: "Autenticação",
-    severity: "media",
+    title: "Modo espectador recebe cartas privadas",
+    category: "Sigilo de Cartas",
+    severity: "alta",
     status: "aberto",
-    area: "POST /api/auth/recuperar",
+    area: "WS espectador",
     description:
-      "A tela de recuperação responde de forma diferente para e-mail cadastrado e não cadastrado, o que entrega a lista de quem tem conta.",
+      "Quem assiste a mesa como espectador recebe o mesmo fluxo dos jogadores, incluindo cartas privadas que a tela esconde.",
     risk:
-      "Facilita montar uma lista de alvos reais antes de tentar invadir, e expõe que uma pessoa específica usa a plataforma.",
+      "Um cúmplice assistindo de fora lê a mão de todos e passa por chat ou telefone para quem está jogando.",
     fix:
-      "Responder sempre a mesma mensagem, com o mesmo tempo de resposta, independente de o e-mail existir.",
+      "O fluxo do espectador é separado e só carrega o que é público: cartas comunitárias e apostas, nunca a mão de ninguém.",
     reproducao:
-      "Comparar a resposta para um e-mail real e um inventado.",
-    discovered: "2026-10-17",
-    owner: "Backend",
+      "Entrar como espectador e inspecionar o fluxo recebido.",
+    discovered: "2026-10-21",
+    owner: "Servidor de jogo",
   },
   {
     id: "SEN-005",
-    title: "Token de sessão sem marcação segura no cookie",
-    category: "Configuração",
+    title: "Reconexão reenvia o estado completo com cartas alheias",
+    category: "Sigilo de Cartas",
     severity: "alta",
     status: "aberto",
-    area: "Cookie de sessão",
+    area: "WS mesa:resync",
     description:
-      "O cookie de sessão não vem com as marcações que impedem leitura por script e envio fora do site, então fica mais fácil de ser roubado.",
+      "Ao cair e reconectar, o jogador recebe um resync do estado que inclui a mão dos adversários, mesmo com a mão em andamento.",
     risk:
-      "Um único ponto de script injetado em qualquer página passa a conseguir levar a sessão do usuário embora.",
+      "Basta forçar uma reconexão no meio da mão para receber tudo que deveria estar escondido.",
     fix:
-      "Marcar o cookie como HttpOnly, Secure e SameSite, e revisar o tempo de vida da sessão.",
+      "O resync devolve só o estado público mais a própria mão, exatamente como o início da mão corrigido.",
     reproducao:
-      "Inspecionar o cookie de sessão no navegador.",
-    discovered: "2026-10-16",
-    owner: "Infraestrutura",
+      "Derrubar a conexão no meio de uma mão e ler o resync.",
+    discovered: "2026-10-20",
+    owner: "Servidor de jogo",
   },
   {
     id: "SEN-006",
-    title: "Upload de arquivo aceita qualquer extensão",
-    category: "Configuração",
-    severity: "alta",
-    status: "em_correcao",
-    area: "POST /api/arquivos",
+    title: "Resultado da mão é calculado no aplicativo",
+    category: "Integridade da Partida",
+    severity: "critica",
+    status: "aberto",
+    area: "cliente: avaliação da mão",
     description:
-      "O envio de comprovantes não valida o tipo real do arquivo, só o nome. Dá para subir um arquivo executável disfarçado.",
+      "A força da mão e o vencedor são decididos no aplicativo e enviados ao servidor, que confia no que chega.",
     risk:
-      "Abre caminho para hospedar conteúdo malicioso no próprio domínio da plataforma, com a confiança que o domínio carrega.",
+      "Um cliente modificado se declara vencedor de qualquer pote. O jogo inteiro passa a ser palavra do jogador.",
     fix:
-      "Validar o tipo real do conteúdo, limitar extensões, servir o arquivo de um domínio separado e sem execução.",
+      "O servidor é a única autoridade. Ele avalia a mão, decide o vencedor e distribui o pote, e o aplicativo só mostra.",
     reproducao:
-      "Subir um arquivo com extensão trocada e observar o aceite.",
-    discovered: "2026-10-16",
-    owner: "Backend",
+      "Alterar o resultado enviado ao servidor e observar o aceite.",
+    discovered: "2026-10-20",
+    owner: "Servidor de jogo",
   },
   {
     id: "SEN-007",
-    title: "Lista de clientes paginada sem limite por conta",
-    category: "Controle de Acesso",
-    severity: "alta",
+    title: "Saque não confere o saldo real da conta",
+    category: "Caixa e Saques",
+    severity: "critica",
     status: "aberto",
-    area: "GET /api/clientes",
+    area: "POST /api/caixa/saque",
     description:
-      "A busca de clientes filtra na tela, mas a resposta da API traz a base toda paginada, sem restringir ao que a conta deveria ver.",
+      "O pedido de saque confia no saldo informado pelo aplicativo, sem reconferir o saldo real no servidor.",
     risk:
-      "O filtro visual esconde o problema. A base inteira sai pela API para quem olhar a resposta direto.",
+      "Dá para sacar mais do que se tem, e o prejuízo é dinheiro de verdade saindo direto do caixa.",
     fix:
-      "Filtrar no servidor pelo escopo da conta, nunca confiar no filtro aplicado só na tela.",
+      "O saque recalcula o saldo no servidor a partir do histórico de mãos e depósitos antes de liberar qualquer valor.",
     reproducao:
-      "Chamar a API de clientes sem o filtro da interface.",
-    discovered: "2026-10-15",
-    owner: "Backend",
+      "Pedir um saque com saldo informado maior que o real.",
+    discovered: "2026-10-19",
+    owner: "Caixa",
   },
   {
     id: "SEN-008",
-    title: "Mensagem de erro expõe estrutura interna do banco",
-    category: "Exposição de Dados",
-    severity: "media",
+    title: "Duas contas na mesma mesa pela mesma origem",
+    category: "Colusão e Bots",
+    severity: "alta",
     status: "aberto",
-    area: "Tratamento de erro global",
+    area: "entrada na mesa",
     description:
-      "Quando algo quebra, a resposta devolve o erro bruto, com nomes de tabelas e caminhos internos.",
+      "O sistema não impede que contas diferentes da mesma origem sentem na mesma mesa, abrindo espaço para multiconta e colusão.",
     risk:
-      "Entrega um mapa de como o sistema é feito por dentro, o que encurta muito o trabalho de quem quer entrar.",
+      "Dois lugares controlados pela mesma pessoa cercam o adversário, que perde sem nunca entender por quê.",
     fix:
-      "Mensagem genérica para o usuário, detalhe só no log interno, nunca na resposta.",
+      "Bloquear contas correlacionadas na mesma mesa e sinalizar padrões de colusão para revisão humana.",
     reproducao:
-      "Forçar um erro de validação e ler a resposta.",
-    discovered: "2026-10-15",
-    owner: "Backend",
+      "Entrar na mesma mesa com duas contas da mesma origem.",
+    discovered: "2026-10-19",
+    owner: "Integridade",
   },
   {
     id: "SEN-009",
-    title: "Campo de busca reflete entrada sem tratamento",
-    category: "Injeção",
+    title: "Sem detecção de automação nas ações da mesa",
+    category: "Colusão e Bots",
     severity: "alta",
     status: "aberto",
-    area: "Busca do catálogo",
+    area: "ações de jogo",
     description:
-      "O que a pessoa digita na busca volta na página sem tratamento, o que permite injetar script que roda no navegador de quem abrir o link.",
+      "Não há checagem de ritmo e padrão nas jogadas, então um robô joga dia e noite sem ser notado.",
     risk:
-      "Um link preparado rouba a sessão de quem clicar, inclusive de um administrador.",
+      "Bots drenam as mesas com disciplina que ninguém tem, e os jogadores de verdade vão embora.",
     fix:
-      "Tratar a saída ao renderizar e aplicar política de conteúdo que bloqueie script externo.",
+      "Medir ritmo, padrão e tempo de reação, desafiar o que parece automático e revisar antes de punir.",
     reproducao:
-      "Buscar por um trecho de script e observar a página.",
-    discovered: "2026-10-14",
-    owner: "Frontend",
+      "Rodar jogadas automatizadas e ver se algo sinaliza.",
+    discovered: "2026-10-18",
+    owner: "Integridade",
   },
   {
     id: "SEN-010",
-    title: "Exportação de relatório sem verificação de permissão",
-    category: "Controle de Acesso",
-    severity: "critica",
+    title: "Carta privada aparece nos logs do servidor",
+    category: "Sigilo de Cartas",
+    severity: "alta",
     status: "aberto",
-    area: "GET /api/relatorios/export",
+    area: "logs de jogo",
     description:
-      "A exportação de relatórios financeiros está acessível a qualquer conta logada, não só ao perfil financeiro.",
+      "O log de depuração registra a mão de cada jogador em texto, e esse log é acessível a mais gente do que deveria.",
     risk:
-      "Faturamento e dados sensíveis saem em um clique para quem não deveria nem ver a tela.",
+      "Quem tem acesso ao log lê a mão de todas as mesas sem nem entrar no jogo.",
     fix:
-      "Exigir o papel financeiro no servidor antes de gerar o arquivo, registrar quem exportou.",
+      "Nunca registrar carta privada em log. Mascarar na origem e restringir quem lê a telemetria.",
     reproducao:
-      "Acessar a rota de exportação com uma conta comum.",
-    discovered: "2026-10-14",
-    owner: "Backend",
+      "Procurar a carta privada nas linhas de log de uma mão.",
+    discovered: "2026-10-18",
+    owner: "Infraestrutura",
   },
   {
     id: "SEN-011",
-    title: "Limite de tentativas de login ausente",
-    category: "Autenticação",
-    severity: "media",
-    status: "corrigido",
-    area: "POST /api/auth/login",
+    title: "Baralho sem compromisso público antes da mão",
+    category: "Aleatoriedade (RNG)",
+    severity: "alta",
+    status: "aberto",
+    area: "início da mão",
     description:
-      "O login não limita tentativas, o que deixa testar senhas em massa contra uma conta.",
+      "O servidor embaralha mas não publica um compromisso do baralho antes da mão, então não há como provar depois que ele não foi mudado.",
     risk:
-      "Contas com senha fraca caem por tentativa e erro, sem ninguém perceber.",
+      "Mesmo sendo honesto, o site fica sem defesa contra a acusação de viciar, e confiança é o ativo da mesa.",
     fix:
-      "Limitar tentativas por conta e por origem, com espera progressiva e alerta.",
+      "Publicar o hash do baralho e a semente do jogador antes da mão, e revelar a semente do servidor no fim para qualquer um verificar.",
     reproducao:
-      "Repetir tentativas de senha contra a mesma conta.",
-    discovered: "2026-10-13",
-    owner: "Backend",
+      "Verificar se existe compromisso publicado antes de distribuir.",
+    discovered: "2026-10-17",
+    owner: "Servidor de jogo",
   },
   {
     id: "SEN-012",
-    title: "Senha guardada com algoritmo fraco",
-    category: "Criptografia",
+    title: "Sessão continua válida após troca de senha",
+    category: "Controle de Acesso",
     severity: "alta",
     status: "em_correcao",
-    area: "Armazenamento de credenciais",
+    area: "POST /api/auth/senha",
     description:
-      "As senhas estão guardadas com um método antigo e rápido de quebrar, em vez de um próprio para senhas.",
+      "Trocar a senha não derruba as sessões antigas, então quem já estava dentro continua dentro.",
     risk:
-      "Se o banco vazar, as senhas viram texto aberto em pouco tempo, e muita gente repete senha entre serviços.",
+      "Depois de uma conta invadida, trocar a senha não expulsa o invasor, que era o objetivo.",
     fix:
-      "Migrar para um algoritmo moderno de hash de senha, com custo ajustável, e reidratar no próximo login.",
+      "Invalidar todas as sessões na troca de senha e exigir novo login em todos os aparelhos.",
     reproducao:
-      "Revisar o formato de armazenamento das credenciais.",
-    discovered: "2026-10-13",
+      "Abrir duas sessões, trocar a senha em uma e seguir na outra.",
+    discovered: "2026-10-17",
     owner: "Backend",
   },
   {
     id: "SEN-013",
-    title: "Webhook de pagamento sem validação de assinatura",
-    category: "Lógica de Negócio",
-    severity: "critica",
+    title: "Chip dumping entre contas sem alerta",
+    category: "Colusão e Bots",
+    severity: "media",
     status: "aberto",
-    area: "POST /api/webhooks/pagamento",
+    area: "fluxo de fichas",
     description:
-      "O aviso de pagamento aprovado é aceito sem conferir se veio mesmo do provedor. Dá para confirmar um pedido sem ter pago.",
+      "Transferências sistemáticas de fichas de uma conta para outra, perdendo de propósito, passam sem alerta.",
     risk:
-      "Pedido liberado sem pagamento real. O prejuízo é direto e some no volume.",
+      "É um caminho de lavar valor e de mover dinheiro entre contas combinadas, com a mesa de fachada.",
     fix:
-      "Validar a assinatura do provedor em todo webhook e conferir o valor contra o pedido antes de liberar.",
+      "Sinalizar perdas dirigidas e repetidas entre o mesmo par de contas para revisão.",
     reproducao:
-      "Enviar um aviso de pagamento forjado ao endpoint.",
-    discovered: "2026-10-12",
-    owner: "Backend",
+      "Simular perdas dirigidas repetidas entre duas contas.",
+    discovered: "2026-10-16",
+    owner: "Integridade",
   },
   {
     id: "SEN-014",
-    title: "Cupom de desconto aceita valor negativo",
-    category: "Lógica de Negócio",
-    severity: "media",
-    status: "aberto",
-    area: "POST /api/carrinho/cupom",
-    description:
-      "O cálculo de desconto não trava valores fora da faixa, e um cupom manipulado consegue baixar o total abaixo de zero.",
-    risk:
-      "Compra sai de graça ou gera crédito indevido, de novo um prejuízo que se esconde no fluxo normal.",
-    fix:
-      "Validar faixa do desconto no servidor e recalcular o total sempre do lado de cá.",
-    reproducao:
-      "Aplicar um cupom com valor fora da faixa esperada.",
-    discovered: "2026-10-12",
-    owner: "Backend",
-  },
-  {
-    id: "SEN-015",
-    title: "Painel administrativo acessível sem segundo fator",
-    category: "Autenticação",
+    title: "Painel administrativo sem segundo fator",
+    category: "Controle de Acesso",
     severity: "alta",
     status: "aberto",
     area: "/admin",
     description:
-      "O acesso administrativo depende só de senha. Sem segundo fator, uma senha vazada abre o painel inteiro.",
+      "O acesso administrativo depende só de senha, sem segundo fator.",
     risk:
-      "O painel é a chave do reino. Uma senha comprometida entrega tudo de uma vez.",
+      "Uma senha vazada abre o painel que controla mesas, saldos e regras.",
     fix:
-      "Exigir segundo fator para todo acesso administrativo e registrar logins por origem.",
+      "Exigir segundo fator para todo acesso administrativo e registrar login por origem.",
     reproducao:
       "Entrar no painel apenas com usuário e senha.",
-    discovered: "2026-10-11",
+    discovered: "2026-10-16",
     owner: "Infraestrutura",
+  },
+  {
+    id: "SEN-015",
+    title: "Cartas comunitárias enviadas antes da hora",
+    category: "Integridade da Partida",
+    severity: "critica",
+    status: "aberto",
+    area: "WS mesa:board",
+    description:
+      "O flop, o turn e o river são mandados ao aplicativo antes do momento de virar, e a tela só segura a exibição.",
+    risk:
+      "Um cliente modificado lê a próxima carta comunitária antes de todo mundo, e decide a aposta sabendo o futuro.",
+    fix:
+      "Cada carta comunitária só sai do servidor no instante em que vira, nunca adiantada.",
+    reproducao:
+      "Inspecionar o fluxo e procurar o board antes da revelação.",
+    discovered: "2026-10-15",
+    owner: "Servidor de jogo",
   },
   {
     id: "SEN-016",
-    title: "Backup acessível em pasta pública",
-    category: "Exposição de Dados",
+    title: "Depósito confirmado sem validar o aviso de pagamento",
+    category: "Caixa e Saques",
     severity: "critica",
     status: "aberto",
-    area: "armazenamento público",
+    area: "POST /api/caixa/webhook",
     description:
-      "Um backup antigo do banco ficou em uma pasta de arquivos aberta, alcançável por link direto.",
+      "O aviso de depósito aprovado é aceito sem conferir se veio mesmo do provedor de pagamento.",
     risk:
-      "A base inteira, de uma data anterior, disponível para download por quem achar o caminho.",
+      "Dá para creditar fichas sem ter pago, convertendo em saque depois. Prejuízo direto.",
     fix:
-      "Remover o arquivo, fechar a pasta, revisar o que mais foi publicado ali e girar as credenciais expostas.",
+      "Validar a assinatura do provedor em todo aviso e conferir o valor antes de creditar.",
     reproducao:
-      "Acessar o caminho do backup pelo link direto.",
-    discovered: "2026-10-11",
-    owner: "Infraestrutura",
+      "Enviar um aviso de pagamento forjado ao endpoint.",
+    discovered: "2026-10-15",
+    owner: "Caixa",
   },
   {
     id: "SEN-017",
-    title: "Chave de integração visível no código do navegador",
-    category: "Exposição de Dados",
-    severity: "alta",
+    title: "Tempo de ação revela a força da mão",
+    category: "Integridade da Partida",
+    severity: "media",
     status: "aberto",
-    area: "pacote do frontend",
+    area: "temporização das ações",
     description:
-      "Uma chave de serviço externo está embutida no código que vai para o navegador, visível a qualquer visitante.",
+      "O servidor repassa o tempo exato que cada um levou para agir, e esse tempo entrega padrão de mão forte ou fraca.",
     risk:
-      "A chave pode ser usada por terceiros, gerando custo ou acesso em nome da plataforma.",
+      "Um jogador atento lê a hesitação do outro com precisão e ganha vantagem que não deveria existir.",
     fix:
-      "Mover a chave para o servidor, nunca expor no pacote do navegador, e girar a chave atual.",
+      "Padronizar e arredondar a temporização repassada, sem expor o tempo cru.",
     reproducao:
-      "Procurar a chave no código entregue ao navegador.",
-    discovered: "2026-10-10",
-    owner: "Frontend",
+      "Comparar o tempo repassado com a força real da mão ao showdown.",
+    discovered: "2026-10-14",
+    owner: "Servidor de jogo",
   },
   {
     id: "SEN-018",
-    title: "Notificação por e-mail permite forjar remetente interno",
-    category: "Configuração",
+    title: "Reconhecimento de rosto do saque pode ser burlado por foto",
+    category: "Caixa e Saques",
     severity: "media",
-    status: "aberto",
-    area: "envio de e-mail",
+    status: "corrigido",
+    area: "verificação de saque",
     description:
-      "O domínio de e-mail não tem as proteções que impedem terceiros de enviar mensagens se passando pela plataforma.",
+      "A verificação de identidade no saque aceitava uma foto estática no lugar da pessoa.",
     risk:
-      "Golpe de phishing com o nome da plataforma, difícil de o cliente distinguir do real.",
+      "Uma conta roubada era esvaziada com uma foto do titular, sem a pessoa presente.",
     fix:
-      "Configurar as políticas de autenticação de e-mail do domínio e monitorar os relatórios.",
+      "Exigir prova de vida na verificação e cruzar com o histórico da conta.",
     reproducao:
-      "Checar as políticas publicadas do domínio de e-mail.",
-    discovered: "2026-10-10",
-    owner: "Infraestrutura",
+      "Apresentar uma foto estática na verificação.",
+    discovered: "2026-10-13",
+    owner: "Caixa",
   },
   {
     id: "SEN-019",
-    title: "Comentário em pedido não trata entrada de texto",
-    category: "Injeção",
+    title: "Semente do jogador ignorada no embaralhamento",
+    category: "Aleatoriedade (RNG)",
     severity: "media",
-    status: "corrigido",
-    area: "comentários de pedido",
+    status: "aberto",
+    area: "baralho justo",
     description:
-      "O campo de observação do pedido guardava o texto sem tratamento, e ele voltava bruto no painel da equipe.",
+      "Mesmo onde existe semente do jogador, ela não entra de fato no embaralhamento, então só o servidor decide o baralho.",
     risk:
-      "Um pedido preparado conseguia rodar script na tela de quem atendia.",
+      "O jogador não tem como influenciar nem conferir, e a verificação de baralho justo vira enfeite.",
     fix:
-      "Tratar a saída ao exibir e limitar o conteúdo aceito no campo.",
+      "Combinar a semente do servidor e a do jogador no embaralhamento, e documentar como qualquer um refaz a conta.",
     reproducao:
-      "Registrar um comentário com script e abrir no painel.",
-    discovered: "2026-10-09",
-    owner: "Frontend",
+      "Mudar a semente do jogador e ver se o baralho muda.",
+    discovered: "2026-10-13",
+    owner: "Servidor de jogo",
   },
   {
     id: "SEN-020",
-    title: "Rota de API antiga ainda ativa sem autenticação",
-    category: "Controle de Acesso",
-    severity: "alta",
-    status: "aberto",
-    area: "GET /api/v1/usuarios",
-    description:
-      "Uma versão antiga da API continua no ar e não exige login, embora a versão atual já exija.",
-    risk:
-      "A porta nova está trancada, a velha ficou aberta ao lado, e é por ela que se entra.",
-    fix:
-      "Desligar a versão antiga ou colocá-la atrás da mesma autenticação da atual.",
-    reproducao:
-      "Acessar a rota da versão antiga sem credenciais.",
-    discovered: "2026-10-09",
-    owner: "Backend",
-  },
-  {
-    id: "SEN-021",
-    title: "Falta registro de acesso a dados sensíveis",
-    category: "Configuração",
-    severity: "baixa",
-    status: "aberto",
-    area: "trilha de auditoria",
-    description:
-      "Acessos a dados sensíveis não deixam registro, então, se algo vazar, não há como saber por onde nem por quem.",
-    risk:
-      "Sem trilha, um incidente vira investigação no escuro, e a plataforma não consegue provar o que aconteceu.",
-    fix:
-      "Registrar acesso a dados sensíveis com quem, quando e o quê, guardado fora do alcance comum.",
-    reproducao:
-      "Verificar se há trilha ao acessar um dado sensível.",
-    discovered: "2026-10-08",
-    owner: "Infraestrutura",
-  },
-  {
-    id: "SEN-022",
-    title: "Convite de equipe não expira",
-    category: "Autenticação",
-    severity: "baixa",
-    status: "reteste_ok",
-    area: "convites de equipe",
-    description:
-      "O link de convite para a equipe continuava válido por tempo indefinido depois de enviado.",
-    risk:
-      "Um convite reencaminhado ou vazado abria acesso meses depois, sem ninguém notar.",
-    fix:
-      "Dar prazo curto ao convite e invalidar ao primeiro uso.",
-    reproducao:
-      "Usar um link de convite antigo.",
-    discovered: "2026-10-07",
-    owner: "Backend",
-  },
-  {
-    id: "SEN-023",
     title: "Cabeçalhos de segurança ausentes nas respostas",
     category: "Configuração",
     severity: "baixa",
@@ -410,30 +356,48 @@ export const FINDINGS: Finding[] = [
     description:
       "As respostas não trazem os cabeçalhos que endurecem o navegador contra ataques comuns.",
     risk:
-      "O navegador fica sem as travas que evitariam parte dos ataques de página.",
+      "O navegador fica sem travas que evitariam parte dos ataques de página.",
     fix:
       "Adicionar os cabeçalhos de segurança padrão e a política de conteúdo em todas as respostas.",
     reproducao:
       "Inspecionar os cabeçalhos de uma resposta qualquer.",
-    discovered: "2026-10-07",
+    discovered: "2026-10-12",
     owner: "Infraestrutura",
   },
   {
-    id: "SEN-024",
-    title: "Versão de biblioteca com falha conhecida",
-    category: "Configuração",
-    severity: "media",
-    status: "aberto",
-    area: "dependências",
+    id: "SEN-021",
+    title: "Convite para mesa privada não expira",
+    category: "Controle de Acesso",
+    severity: "baixa",
+    status: "reteste_ok",
+    area: "convites de mesa",
     description:
-      "Uma biblioteca usada no projeto está em versão com falha pública já corrigida nas versões novas.",
+      "O link de convite para uma mesa privada seguia válido por tempo indefinido.",
     risk:
-      "Falha conhecida é a mais fácil de explorar, porque o passo a passo já está publicado.",
+      "Um convite reencaminhado deixava um estranho entrar em mesa fechada semanas depois.",
     fix:
-      "Atualizar a biblioteca e colocar checagem de dependências no fluxo de entrega.",
+      "Dar prazo curto ao convite e invalidar ao primeiro uso.",
     reproducao:
-      "Comparar a versão em uso com as versões corrigidas.",
-    discovered: "2026-10-06",
+      "Usar um link de convite antigo.",
+    discovered: "2026-10-11",
     owner: "Backend",
+  },
+  {
+    id: "SEN-022",
+    title: "Falta registro de quem acessou dados de jogador",
+    category: "Configuração",
+    severity: "baixa",
+    status: "aberto",
+    area: "trilha de auditoria",
+    description:
+      "Acessos internos a dados sensíveis de jogador não deixam trilha, então um incidente vira investigação no escuro.",
+    risk:
+      "Sem registro, não há como saber por onde nem por quem um dado vazou.",
+    fix:
+      "Registrar acesso a dado sensível com quem, quando e o quê, guardado fora do alcance comum.",
+    reproducao:
+      "Acessar um dado sensível e verificar se há trilha.",
+    discovered: "2026-10-11",
+    owner: "Infraestrutura",
   },
 ];

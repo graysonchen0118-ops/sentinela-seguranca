@@ -7,8 +7,8 @@ import {
   ShieldCheck,
   LayoutDashboard,
   Bug,
-  Radar,
-  Target,
+  EyeOff,
+  Shuffle,
   RefreshCw,
   Menu,
   Search,
@@ -19,8 +19,8 @@ import { useStore } from "@/lib/store";
 const NAV = [
   { href: "/", label: "Visão geral", icon: LayoutDashboard },
   { href: "/achados", label: "Achados", icon: Bug },
-  { href: "/superficie", label: "Superfície de ataque", icon: Radar },
-  { href: "/recompensa", label: "Recompensa por bugs", icon: Target },
+  { href: "/cartas", label: "Sigilo das cartas", icon: EyeOff },
+  { href: "/baralho", label: "Baralho justo", icon: Shuffle },
   { href: "/reteste", label: "Reteste", icon: RefreshCw },
 ];
 
@@ -52,7 +52,7 @@ export default function Shell({
           </span>
           <div>
             <div className="brand-name">Sentinela</div>
-            <div className="brand-sub">Auditoria contínua</div>
+            <div className="brand-sub">Integridade de jogo</div>
           </div>
         </div>
 
@@ -79,9 +79,9 @@ export default function Shell({
         </nav>
 
         <div className="sidebar-foot">
-          Varredura ativa sobre a superfície mapeada.
+          Carta privada não sai do servidor até o showdown.
           <br />
-          Última sincronização há poucos minutos.
+          Baralho justo verificável a cada mão.
         </div>
       </aside>
 

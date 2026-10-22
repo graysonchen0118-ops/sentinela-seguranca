@@ -32,13 +32,13 @@ import {
 } from "@/lib/types";
 
 const CATEGORIES: Category[] = [
+  "Sigilo de Cartas",
+  "Aleatoriedade (RNG)",
+  "Integridade da Partida",
+  "Colusão e Bots",
+  "Caixa e Saques",
   "Controle de Acesso",
-  "Autenticação",
-  "Exposição de Dados",
-  "Injeção",
   "Configuração",
-  "Criptografia",
-  "Lógica de Negócio",
 ];
 
 const STATUS_FLOW: { key: FindingStatus; label: string; icon: React.ReactNode }[] = [
@@ -339,7 +339,7 @@ function FindingDrawer({
 function CreateDrawer({ onClose }: { onClose: () => void }) {
   const { addFinding, busy } = useStore();
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<Category>("Controle de Acesso");
+  const [category, setCategory] = useState<Category>("Sigilo de Cartas");
   const [severity, setSeverity] = useState<Severity>("alta");
   const [area, setArea] = useState("");
   const [description, setDescription] = useState("");

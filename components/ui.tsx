@@ -4,10 +4,8 @@ import { useRef, type ReactNode } from "react";
 import {
   SEVERITY_LABEL,
   STATUS_LABEL,
-  BOUNTY_STATUS_LABEL,
   type Severity,
   type FindingStatus,
-  type BountyStatus,
 } from "@/lib/types";
 
 export function SeverityPill({ s }: { s: Severity }) {
@@ -21,10 +19,6 @@ export function SeverityPill({ s }: { s: Severity }) {
 
 export function StatusPill({ s }: { s: FindingStatus }) {
   return <span className={`st st-${s}`}>{STATUS_LABEL[s]}</span>;
-}
-
-export function BountyStatusPill({ s }: { s: BountyStatus }) {
-  return <span className={`st st-${s}`}>{BOUNTY_STATUS_LABEL[s]}</span>;
 }
 
 export function Skeleton({
